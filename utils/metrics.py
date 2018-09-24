@@ -15,8 +15,9 @@ from keras.callbacks import Callback
 import keras.backend as K
 
 
-def accuracy():
+def accuracy(average=True):
     ''' returns function that returns acc for each class. shape = (num_classes,)
+    @param average if False then returns accuracy for all classes else averages them
     return function(y_true,y_pred) -> result 
     '''
     def metric(y_true, y_pred):
@@ -24,7 +25,13 @@ def accuracy():
         num_classes = y_true.shape[-1]
         y_argmax = np.argmax(y_pred, axis=-1)
         y_pred = to_categorical(y_argmax, num_classes=num_classes)
-        return accuracy_score(y_true, y_pred)
+        accs = np.zeros(num_classes)
+        for i in range(num_classes):
+            accs[i] = accuracy_score(y_true[:,i],y_pred[:,i])
+        if average:
+            return np.mean(accs)
+        else:
+            return accs
     return metric
 
 
@@ -73,9 +80,42 @@ def precision(average='macro'):
     return metric
 
 
-def conf_matrix():
+def roc_auc(average='macro'):
+    ''' returns roc auc
+    @param average - 'micro' (dominant class is more important) (returns one number) or 
+                     'macro' (smaller classes are more important) (returns one number) or 
+                     None (no average, returns array w/ shape (num_classes,))
+    return function(y_true,y_pred) -> result 
+    '''
+    def metric(y_true, y_pred):
+        ''' both inputs are not sparse w/ shape (num_examples,num_classes) '''
+        num_classes = y_true.shape[-1]
+        y_argmax = np.argmax(y_pred, axis=-1)
+        y_pred = to_categorical(y_argmax, num_classes=num_classes)
+        return roc_auc_score(y_true, y_pred, average=average)
+    return metric
+
+
+def f1(average='macro'):
+    ''' returns f1 score
+    @param average - 'micro' (dominant class is more important) (returns one number) or 
+                     'macro' (smaller classes are more important) (returns one number) or 
+                     None (no average, returns array w/ shape (num_classes,))
+    return function(y_true,y_pred) -> result 
+    '''
+    def metric(y_true, y_pred):
+        ''' both inputs are not sparse w/ shape (num_examples,num_classes) '''
+        num_classes = y_true.shape[-1]
+        y_argmax = np.argmax(y_pred, axis=-1)
+        y_pred = to_categorical(y_argmax, num_classes=num_classes)
+        return f1_score(y_true, y_pred, average=average)
+    return metric
+
+
+def conf_matrix(normalize=False):
     ''' returns function that returns confusion matrix 
         array w/ shape (num_classes,num_classes)
+    @param normalize if True then normalizes matrix
     return function(y_true,y_pred) -> result
     '''
     def metric(y_true,y_pred):
@@ -84,6 +124,8 @@ def conf_matrix():
         y_pred = np.argmax(y_pred, axis=-1)
         y_true = np.argmax(y_true, axis=-1)
         cm = confusion_matrix(y_true, y_pred, labels=np.arange(num_classes)) # returns shape=(num_classes,num_classes)
+        if normalize:
+            cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
         return cm
     return metric
 
