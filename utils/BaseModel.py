@@ -28,7 +28,7 @@ import copy
 
 from utils.model_utils import DataPlaceholder, get_class_weights, \
                               imblearn_sample, PredictDataCallback
-from utils.model_utils import MultipleMetricsEarlyStopping as EarlyStopping
+from utils.model_utils import MultipleMetricsEarlyStopping
 from utils.metrics import normalized_confusion_matrix_and_identity_mse as confusion_mse
 from utils.metrics import accuracy, weighted_accuracy, recall, precision
 from utils.skopt_utils import get_best_params, create_skopt_results_string
@@ -137,9 +137,9 @@ class Model():
         else:
             if early_stopping_callback == 'default':
                 self.class_weights = get_class_weights(Y, self.num_classes)
-                early_stopping_functions = [confusion_mse(), accuracy(), weighted_accuracy(self.class_weights), recall(average='macro'), precision(average='macro')]
-                modes = ['min', 'max', 'max', 'max', 'max']
-                early_stopping_callback = EarlyStopping(early_stopping_functions, modes=modes, patience=5)
+                early_stopping_functions = [confusion_mse(), recall(average='macro'), precision(average='macro')]
+                modes = ['min', 'max', 'max']
+                early_stopping_callback = MultipleMetricsEarlyStopping(early_stopping_functions, modes=modes)
             
             data.train.x, data.val.x, data.train.y, data.val.y = train_test_split(X, Y, test_size=test_split, random_state=seed)
             if use_imblearn:

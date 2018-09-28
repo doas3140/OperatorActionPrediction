@@ -10,6 +10,7 @@
 
 import numpy as np
 import keras
+from collections import deque
 
 
 def imblearn_sample(X, Y, imblearn_class, verbose=0):
@@ -49,7 +50,7 @@ class MultipleMetricsEarlyStopping(keras.callbacks.Callback):
         First metric is most important, it cannot be worse then the best metric by more then p.
         where n is patience and p is percentage increase from best score.
     '''
-    def __init__(self, metric_functions, modes, patience, max_percentage_delta=0.2):
+    def __init__(self, metric_functions, modes, patience=7, moving_avg_length=2, max_percentage_delta=0.3):
         '''
         @param metric_functions - list w/ metric functions (y_true,y_pred) -> result
         @param modes - list w/ 'max' or 'min' string, represents to maximize/minimize
@@ -65,6 +66,8 @@ class MultipleMetricsEarlyStopping(keras.callbacks.Callback):
         self.metric_functions = metric_functions
         self.best_scores = np.array([ -np.inf if m == 'max' else np.inf for m in modes ])
         self.is_better = np.array([ np.greater if m == 'max' else np.less for m in modes ])
+        self.moving_avg_length = moving_avg_length
+        self.moving_avg_buffer = deque(maxlen=moving_avg_length)
         self.importance = max_percentage_delta
         self.patience = patience
         self.wait = 0
@@ -73,21 +76,31 @@ class MultipleMetricsEarlyStopping(keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs={}):
         y_pred = np.asarray(self.model.predict(self.validation_data[0])) # (num_examples,num_classes)
         y_true = self.validation_data[1] # (num_examples,num_classes)
-        scores = np.array([m(y_true, y_pred) for m in self.metric_functions])
+        current_scores = np.array([m(y_true, y_pred) for m in self.metric_functions])
+        self.moving_avg_buffer.append( current_scores )
+        if len(self.moving_avg_buffer) != self.moving_avg_length:
+            scores = current_scores
+        else:
+            scores = np.mean(self.moving_avg_buffer, axis=0)
         bool_arr = np.array([ is_btr(s,b) for s,b,is_btr in zip(scores,self.best_scores,self.is_better) ])
-        logs['main_score'] = scores[0]
+        logs['main_score'] = current_scores[0]
         percentage_increase = (scores[0] - self.best_scores[0]) / self.best_scores[0]
+        
+        # see if atleast one is getting better
         if len(bool_arr[ bool_arr == True ])/len(bool_arr) != 0:
             self.wait = 0
-            self.best_scores[ bool_arr ] = scores[ bool_arr ]
-            # see if main metric is not getting worse more then some percentage number self.importance
-            first_metric_is_getting_worse = not self.is_better[0]( percentage_increase, 0 )
-            percentage_is_bigger_then_importance = np.greater( np.abs(percentage_increase), self.importance )
-            if first_metric_is_getting_worse and percentage_is_bigger_then_importance:
-                self.model.stop_training = True
+            self.best_scores[ bool_arr ] = current_scores[ bool_arr ]
         else:
             self.wait += 1
+        
+        # see if waiting is bigger then patience
         if self.wait > self.patience:
+            self.model.stop_training = True
+
+        # see if main metric is not getting worse more then some percentage number self.importance
+        first_metric_is_getting_worse = not self.is_better[0]( percentage_increase, 0 )
+        percentage_is_bigger_then_importance = np.greater( np.abs(percentage_increase), self.importance )
+        if first_metric_is_getting_worse and percentage_is_bigger_then_importance:
             self.model.stop_training = True
 
 

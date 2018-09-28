@@ -177,8 +177,8 @@ def get_metrics_functions(weights):
     return {
         'accuracy': accuracy(),
         'weighted_acc': weighted_accuracy(weights),
-        # 'roc_auc': roc_auc(),
-        # 'f1': f1(),
+        # 'roc_auc': roc_auc(average=None),
+        # 'f1': f1(average=None),
         'recall':recall(average=None),
         'precision':precision(average=None),
         'micro_recall':recall(average='micro'),
