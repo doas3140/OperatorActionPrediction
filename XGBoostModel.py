@@ -67,18 +67,15 @@ class XGBoostModel():
         @param Y w/ shape (num_examples,) - where each number is integer that represents one class
         @param max_depth - maximum tree depth
         @param max_epochs - maximum learning epochs, if not using kfold to approximate num_epochs: then this is num_epochs used for training
-        @param batch_size - neural network parameter
         @param seed - random seed that is used everywhere for reproducability
         @param verbose - if 0: no print output, else: print output
-        @param use_imblearn - boolean that decides to use resampling for training or not
+        @param use_imblearn - boolean that decides to use resampling for training or not (from imblearn library)
         @param imblearn_class - class from iblearn library used for resampling (doesn't do anything if use_imblearn = False)
-        @param use_kfold_to_approximate_num_epochs - boolean that decides to approximate num_epochs or not (if not: uses one train/test set to approximate)
-        @param kfold_function - cross validation function from sklearn library (doesn't do anything if use_kfold_to_approximate_num_epochs = False)
-        @param kfold_splits - number of cross validation splits, used in kfold_function (doesn't do anything if use_kfold_to_approximate_num_epochs = False)
-        @param use_testset_to_approximate_num_epochs - boolean that decides to approximate num_epochs or not (!need to choose one of test set and kfold!)
-        @param test_split - test split used if kfold is not used (doesn't do anything if use_kfold_to_approximate_num_epochs = True)
-        @param early_stopping_callback - early stopping keras callback used to find num_epochs
         @param early_stopping_patience - when training doesn't improve for n epochs, then stop. where n is this variable number
+        @param test_split - test split used for early stopping
+        @param testing - if True: stops training after cross validation and returns predictions of all data across all kfolds
+        @param kfold_function - cross validation function from sklearn library (doesn't do anything if testing == False)
+        @param kfold_splits - number of cross validation splits, used in kfold_function (doesn't do anything if testing == False) 
         '''
 
         if verbose != 0: verb_eval = True
